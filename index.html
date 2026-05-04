@@ -529,8 +529,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const GEMINI_API_KEY = 'AIzaSyD2iew43MXaVurv1ZDKOrcqjCNYpvQ2-cE';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GROQ_API_KEY = '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';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 let currentLang = 'en-US';
 let currentLangName = '英語';
@@ -639,7 +639,7 @@ function setListeningUI(on) {
   btn.textContent = on ? '⏹' : '🎤';
 }
 
-// ── Gemini API ──
+// ── Groq API ──
 async function generateReply(heardText) {
   const context = document.getElementById('businessContext').value.trim();
   const replyText = document.getElementById('replyText');
@@ -669,17 +669,25 @@ ${context ? `補充：${context}` : ''}
 }`;
 
   try {
-    const res = await fetch(GEMINI_URL, {
+    const res = await fetch(GROQ_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_API_KEY}`
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `${systemPrompt}\n\n對方說：${heardText}` }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 400 }
+        model: 'llama3-8b-8192',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `對方說：${heardText}` }
+        ],
+        temperature: 0.7,
+        max_tokens: 400
       })
     });
 
     const data = await res.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const raw = data.choices?.[0]?.message?.content || '';
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
 
@@ -688,14 +696,14 @@ ${context ? `補充：${context}` : ''}
     replyZh.textContent = '📋 ' + parsed.reply_zh;
     speakBtn.disabled = false;
 
-    // Auto mode: speak immediately
     if (currentMode === 'auto') {
       setTimeout(() => speakReply(), 300);
     }
 
   } catch (err) {
-    replyText.textContent = '生成失敗，請再試一次';
-    showToast('API 錯誤，請檢查網路', 'error');
+    replyText.textContent = '生成失敗：' + err.message;
+    showToast('API 錯誤：' + err.message, 'error');
+    console.error(err);
   }
 }
 
@@ -738,7 +746,4 @@ function showToast(msg, type = '') {
 }
 
 // Init
-document.getElementById('statusDot').className = 'status-dot active';
-</script>
-</body>
-</html>
+document.getElement
