@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>EarPilot</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+body { background:#0d0d14; color:#f0f0f8; font-family:system-ui,sans-serif; min-height:100vh; padding:16px; }
+
+h1 { text-align:center; font-size:20px; padding:16px 0 8px; color:#00e5ff; letter-spacing:1px; }
+.sub { text-align:center; font-size:12px; color:#666; margin-bottom:20px; }
+
+.card { background:#1a1a24; border:1px solid #2a2a3a; border-radius:14px; padding:14px; margin-bottom:12px; }
+.label { font-size:10px; color:#00e5ff; letter-spacing:2px; text-transform:uppercase; margin-bottom:8px; }
+
+.lang-row { display:flex; gap:8px; flex-wrap:wrap; }
+.lang-btn { padding:8px 12px; border:1px solid #2a2a3a; border-radius:8px; background:#0d0d14; color:#888; font-size:12px; cursor:pointer; transition:all 0.2s; }
+.lang-btn.on { border-color:#00e5ff; color:#00e5ff; background:rgba(0,229,255,0.08); }
+
+textarea { width:100%; background:#0d0d14; border:1px solid #2a2a3a; border-radius:8px; color:#f0f0f8; font-size:12px; padding:10px; resize:none; height:70px; outline:none; font-family:system-ui,sans-serif; }
+
+/* BIG MIC BUTTON */
+.mic-wrap { display:flex; flex-direction:column; align-items:center; padding:20px 0; }
+#micBtn {
+  width:130px; height:130px; border-radius:50%;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 3px solid #2a2a3a;
+  color:#888; font-size:48px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.2s; user-select:none;
+  -webkit-user-select:none;
+}
+#micBtn.active { border-color:#ef4444; color:#ef4444; background:linear-gradient(135deg,#1a0a0a,#0d0d1a); box-shadow:0 0 30px rgba(239,68,68,0.4); }
+#micBtn.loading { border-color:#f59e0b; color:#f59e0b; }
+
+#micLabel { margin-top:12px; font-size:13px; color:#666; letter-spacing:1px; }
+
+.heard-box { min-height:50px; font-size:14px; color:#ccc; line-height:1.6; }
+.heard-box.has { color:#f0f0f8; }
+
+.reply-box { min-height:60px; }
+.reply-en { font-size:16px; color:#00e5ff; line-height:1.7; margin-bottom:8px; font-weight:500; }
+.reply-zh { font-size:12px; color:#888; line-height:1.6; padding-top:8px; border-top:1px solid #2a2a3a; }
+
+#speakBtn {
+  width:100%; padding:16px; border:none; border-radius:12px;
+  background:linear-gradient(135deg,#7c3aed,#4f46e5);
+  color:white; font-size:15px; font-weight:700; cursor:pointer;
+  margin-bottom:12px; transition:all 0.2s;
+}
+#speakBtn:disabled { opacity:0.3; cursor:not-allowed; }
+#speakBtn.speaking { background:linear-gradient(135deg,#10b981,#059669); }
+
+.speed-row { display:flex; align-items:center; gap:10px; }
+.speed-row label { font-size:11px; color:#666; white-space:nowrap; }
+input[type=range] { flex:1; accent-color:#00e5ff; }
+#speedVal { font-size:11px; color:#00e5ff; min-width:32px; }
+
+#log { font-size:11px; color:#f59e0b; min-height:20px; text-align:center; padding:4px; }
+
+.mode-row { display:flex; gap:8px; }
+.mode-btn { flex:1; padding:10px; border:1px solid #2a2a3a; border-radius:8px; background:#0d0d14; color:#888; font-size:11px; cursor:pointer; text-align:center; transition:all 0.2s; }
+.mode-btn.on { border-color:#7c3aed; color:#c4b5fd; background:rgba(124,58,237,0.1); }
+</style>
+</head>
+<body>
+
+<h1>🎧 EarPilot</h1>
+<p class="sub">PRAUS 柏爾舒 商務即時翻譯</p>
+
+<!-- 模式 -->
+<div class="card">
+  <div class="label">回覆模式</div>
+  <div class="mode-row">
+    <button class="mode-btn on" id="modeAuto" onclick="setMode('auto')">🤖 全自動<br><span style="font-size:10px;opacity:0.7">AI直接播給你聽</span></button>
+    <button class="mode-btn" id="modeSuggest" onclick="setMode('suggest')">💡 提詞<br><span style="font-size:10px;opacity:0.7">你決定要不要說</span></button>
+  </div>
+</div>
+
+<!-- 語言 -->
+<div class="card">
+  <div class="label">對方語言</div>
+  <div class="lang-row">
+    <button class="lang-btn on" onclick="setLang(this,'en-US','英語')">🇺🇸 英語</button>
+    <button class="lang-btn" onclick="setLang(this,'ja-JP','日語')">🇯🇵 日語</button>
+    <button class="lang-btn" onclick="setLang(this,'ko-KR','韓語')">🇰🇷 韓語</button>
+    <button class="lang-btn" onclick="setLang(this,'fr-FR','法語')">🇫🇷 法語</button>
+    <button class="lang-btn" onclick="setLang(this,'ar-SA','阿拉伯語')">🇸🇦 阿拉伯語</button>
+    <button class="lang-btn" onclick="setLang(this,'de-DE','德語')">🇩🇪 德語</button>
+  </div>
+</div>
+
+<!-- 商業背景 -->
+<div class="card">
+  <div class="label">商業背景</div>
+  <textarea id="ctx">我是 PRAUS 柏爾舒的創辦人，正在進行品牌推廣與業務介紹。核心價值是積極正向、以人為本。回覆需自信、溫暖、專業。</textarea>
+</div>
+
+<!-- 播速 -->
+<div class="card">
+  <div class="speed-row">
+    <label>🔊 播速</label>
+    <input type="range" min="0.5" max="1.5" step="0.1" value="0.85" oninput="spd=parseFloat(this.value);document.getElementById('speedVal').textContent=this.value+'x'">
+    <span id="speedVal">0.85x</span>
+  </div>
+</div>
+
+<!-- 麥克風 -->
+<div class="mic-wrap">
+  <button id="micBtn" ontouchstart="startRec()" ontouchend="stopRec()" onmousedown="startRec()" onmouseup="stopRec()">🎤</button>
+  <div id="micLabel">按住說話</div>
+</div>
+
+<div id="log">準備好了，請按住麥克風</div>
+
+<!-- 對方說 -->
+<div class="card">
+  <div class="label">對方說的話</div>
+  <div class="heard-box" id="heard">等待收音...</div>
+</div>
+
+<!-- 回覆 -->
+<div class="card reply-box">
+  <div class="label">你的回覆</div>
+  <div class="reply-en" id="replyEn">—</div>
+  <div class="reply-zh" id="replyZh"></div>
+</div>
+
+<!-- 播放按鈕 -->
+<button id="speakBtn" disabled onclick="speak()">🎧 播放回覆到耳機</button>
+
+<script>
+const GROQ_KEY = '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';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+let lang = 'en-US', langName = '英語', mode = 'auto', spd = 0.85;
+let rec = null, isRec = false, replyText = '', isSpeaking = false;
+
+function log(msg, col) {
+  const el = document.getElementById('log');
+  el.textContent = msg;
+  el.style.color = col || '#f59e0b';
+}
+
+function setLang(btn, code, name) {
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  lang = code; langName = name;
+  log('語言切換：' + name, '#00e5ff');
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('modeAuto').classList.toggle('on', m==='auto');
+  document.getElementById('modeSuggest').classList.toggle('on', m==='suggest');
+}
+
+function startRec() {
+  if (isRec) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { log('此瀏覽器不支援語音，請用Chrome', '#ef4444'); return; }
+
+  rec = new SR();
+  rec.lang = lang;
+  rec.continuous = false;
+  rec.interimResults = true;
+
+  rec.onstart = () => {
+    isRec = true;
+    document.getElementById('micBtn').classList.add('active');
+    document.getElementById('micLabel').textContent = '聆聽中...';
+    log('🔴 收音中，放開按鈕送出', '#ef4444');
+  };
+
+  rec.onresult = (e) => {
+    let txt = '';
+    for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+    const el = document.getElementById('heard');
+    el.textContent = txt;
+    el.classList.add('has');
+  };
+
+  rec.onerror = (e) => {
+    log('收音錯誤：' + e.error, '#ef4444');
+    resetMic();
+  };
+
+  rec.onend = () => {
+    const txt = document.getElementById('heard').textContent;
+    resetMic();
+    if (txt && txt !== '等待收音...') callAI(txt);
+  };
+
+  try { rec.start(); } catch(e) { log('無法啟動：'+e.message, '#ef4444'); }
+}
+
+function stopRec() {
+  if (rec && isRec) { try { rec.stop(); } catch(e){} }
+}
+
+function resetMic() {
+  isRec = false;
+  document.getElementById('micBtn').classList.remove('active');
+  document.getElementById('micLabel').textContent = '按住說話';
+}
+
+async function callAI(heard) {
+  const ctx = document.getElementById('ctx').value;
+  document.getElementById('micBtn').classList.add('loading');
+  document.getElementById('micLabel').textContent = 'AI 思考中...';
+  log('⏳ 送出給 AI...', '#f59e0b');
+  document.getElementById('speakBtn').disabled = true;
+
+  const prompt = `你是 PRAUS 柏爾舒創辦人的即時商務口語助理。
+背景：${ctx}
+對方說了一段${langName}，請代表創辦人生成自然、專業、溫暖的${langName}口語回覆（2-3句）。
+只輸出JSON，不要其他文字：
+{"reply_foreign":"${langName}回覆","reply_zh":"【對方說】摘要+【回覆意思】"}`;
+
+  try {
+    const res = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+      body: JSON.stringify({
+        model: 'llama3-8b-8192',
+        messages: [{ role: 'user', content: prompt + '\n\n對方說：' + heard }],
+        temperature: 0.7, max_tokens: 300
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error('HTTP ' + res.status + ': ' + err);
+    }
+
+    const data = await res.json();
+    const raw = data.choices?.[0]?.message?.content || '';
+    const clean = raw.replace(/```json|```/g,'').trim();
+
+    let parsed;
+    try { parsed = JSON.parse(clean); }
+    catch(e) {
+      // fallback: use raw as reply
+      parsed = { reply_foreign: raw, reply_zh: '（AI 直接回覆）' };
+    }
+
+    replyText = parsed.reply_foreign;
+    document.getElementById('replyEn').textContent = replyText;
+    document.getElementById('replyZh').textContent = parsed.reply_zh || '';
+    document.getElementById('speakBtn').disabled = false;
+    log('✅ 回覆已生成，點播放或自動播出', '#10b981');
+
+    if (mode === 'auto') setTimeout(speak, 400);
+
+  } catch(err) {
+    log('❌ ' + err.message, '#ef4444');
+    document.getElementById('replyEn').textContent = '生成失敗';
+  }
+
+  document.getElementById('micBtn').classList.remove('loading');
+  document.getElementById('micLabel').textContent = '按住說話';
+}
+
+function speak() {
+  if (!replyText || isSpeaking) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(replyText);
+  u.lang = lang; u.rate = spd;
+  const btn = document.getElementById('speakBtn');
+  u.onstart = () => { isSpeaking=true; btn.classList.add('speaking'); btn.textContent='🔊 播放中，跟著說...'; };
+  u.onend = () => { isSpeaking=false; btn.classList.remove('speaking'); btn.textContent='🎧 播放回覆到耳機'; };
+  speechSynthesis.speak(u);
+}
+
+log('✅ App 已載入，請按住麥克風說話', '#10b981');
+</script>
+</body>
+</html>
